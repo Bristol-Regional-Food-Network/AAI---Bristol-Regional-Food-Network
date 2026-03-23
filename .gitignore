@@ -1,0 +1,4 @@
+.venv/
+#data/ # Ignore data directory because the data files are too large
+#models/
+dataset/
