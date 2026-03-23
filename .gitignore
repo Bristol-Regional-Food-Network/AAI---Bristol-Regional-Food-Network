@@ -1,2 +1,10 @@
+# Ignore virtual environment
 .venv/
-dataset/
+venv/
+env/
+
+# Ignore data
+data/
+
+# Ignore trained models
+models/
