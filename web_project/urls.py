@@ -38,4 +38,5 @@ urlpatterns = [
     path("api/producers/", producer_api_views.api_producer_collection, name="api_producers_collection"),
     path("api/producers/<int:producer_id>/", producer_api_views.api_producer_resource, name="api_producer_resource"),
     path("recommendations/", views_ai.customer_recommendations, name="customer_recommendations"),
+    path("api/recommendations/", views_ai.recommendations_api, name="recommendations_api"),
 ]
