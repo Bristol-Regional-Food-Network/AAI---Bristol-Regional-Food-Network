@@ -4,31 +4,34 @@
 ===============================================================
   Run this script to populate the database with all data.
 
-  Required files (place in same folder as this script):
+  Required files:
     - customers_dataset.csv
     - producers_dataset.csv
     - orders_dataset.csv
 
   Usage:
-      python load_all.py
-
-  Make sure you have activated your virtual environment first:
-      .venv\Scripts\Activate.ps1  (Windows)
-      source .venv/bin/activate   (Mac/Linux)
+      python DATA/load_all.py
 ===============================================================
 """
 
 import os
+import sys
+import csv
 import django
+from itertools import groupby
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(BASE_DIR)
+
+sys.path.insert(0, PROJECT_ROOT)
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'web_project.settings')
 django.setup()
 
-import csv
-from itertools import groupby
 from django.contrib.auth.models import User
 from basket.models import Order, OrderItem
 from producers.models import Producer
+from products.models import Product
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -47,6 +50,7 @@ def load_customers():
             if User.objects.filter(username=row['username']).exists():
                 skipped += 1
                 continue
+
             User.objects.create_user(
                 username=row['username'],
                 email=row['email'],
@@ -73,6 +77,7 @@ def load_producers():
             if User.objects.filter(username=row['username']).exists():
                 skipped += 1
                 continue
+
             user = User.objects.create_user(
                 username=row['username'],
                 email=row['email'],
@@ -80,6 +85,7 @@ def load_producers():
                 first_name=row['first_name'],
                 last_name=row['last_name'],
             )
+
             Producer.objects.create(
                 user=user,
                 display_name=row['display_name'],
@@ -95,7 +101,77 @@ def load_producers():
 
 
 # ══════════════════════════════════════════════════════════════
-#  STEP 3 — LOAD ORDERS
+#  STEP 3 — LOAD PRODUCTS
+# ══════════════════════════════════════════════════════════════
+
+def load_products():
+    print("\n📦 Loading products from orders dataset...")
+    path = os.path.join(BASE_DIR, 'orders_dataset.csv')
+    created = skipped = 0
+
+    category_map = {
+        'vegetables': Product.CATEGORY_VEGETABLES,
+        'fruits': Product.CATEGORY_FRUITS,
+        'dairy': Product.CATEGORY_DAIRY,
+        'bakery': Product.CATEGORY_BAKERY,
+        'preserves': Product.CATEGORY_PRESERVES,
+        'seasonal_specialities': Product.CATEGORY_SEASONAL_SPECIALITIES,
+        'seasonal specialities': Product.CATEGORY_SEASONAL_SPECIALITIES,
+    }
+
+    section_map = {
+        'all': Product.SECTION_ALL,
+        'seasonal': Product.SECTION_SEASONAL,
+        'discounted': Product.SECTION_DISCOUNTED,
+        'surplus': Product.SECTION_SURPLUS,
+    }
+
+    with open(path, encoding='utf-8') as f:
+        rows = csv.DictReader(f)
+
+        for row in rows:
+            producer = Producer.objects.filter(display_name=row['producer_name']).first()
+            if not producer:
+                skipped += 1
+                continue
+
+            name = row['product_name'].strip()
+
+            if Product.objects.filter(name=name, producer=producer).exists():
+                skipped += 1
+                continue
+
+            category_raw = (row.get('category') or '').strip().lower()
+            section_raw = (row.get('section') or 'all').strip().lower()
+            unit_raw = (row.get('unit') or 'each').strip().lower()
+
+            valid_units = {choice[0] for choice in Product.UNIT_CHOICES}
+            if unit_raw not in valid_units:
+                unit_raw = Product.UNIT_EACH
+
+            Product.objects.create(
+                producer=producer,
+                name=name,
+                description=f"{name} from {producer.display_name}",
+                price=row.get('price_per_unit') or 0,
+                stock=25,
+                is_organic=str(row.get('is_organic', '')).strip().lower() == 'true',
+                unit=unit_raw,
+                unit_value=1,
+                category=category_map.get(category_raw, Product.CATEGORY_VEGETABLES),
+                section=section_map.get(section_raw, Product.SECTION_ALL),
+                availability_mode=Product.AVAILABILITY_YEAR_ROUND,
+                discount_percent=10 if section_raw == 'discounted' else 0,
+                is_surplus=(section_raw == 'surplus'),
+                surplus_discount_percent=20 if section_raw == 'surplus' else 0,
+            )
+            created += 1
+
+    print(f"   ✅ {created} products created, {skipped} skipped")
+
+
+# ══════════════════════════════════════════════════════════════
+#  STEP 4 — LOAD ORDERS
 # ══════════════════════════════════════════════════════════════
 
 def load_orders():
@@ -106,7 +182,7 @@ def load_orders():
     with open(path, encoding='utf-8') as f:
         rows = list(csv.DictReader(f))
 
-    user_map     = {u.username: u for u in User.objects.all()}
+    user_map = {u.username: u for u in User.objects.all()}
     producer_map = {p.display_name: p for p in Producer.objects.all()}
 
     rows.sort(key=lambda r: int(r['order_id']))
@@ -141,6 +217,7 @@ def load_orders():
 
         for item in items:
             producer = producer_map.get(item['producer_name'])
+
             OrderItem.objects.create(
                 order=order,
                 producer=producer,
@@ -169,6 +246,7 @@ if __name__ == '__main__':
 
     load_customers()
     load_producers()
+    load_products()
     load_orders()
 
     print("\n" + "=" * 55)

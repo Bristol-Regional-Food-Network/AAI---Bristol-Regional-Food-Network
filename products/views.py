@@ -3,7 +3,9 @@ from datetime import timedelta
 import json
 import math
 import re
+import os
 
+import pandas as pd
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Avg
@@ -266,6 +268,35 @@ def product_list(request):
             "producer": item.get("producer", ""),
         })
 
+    recommended_products = []
+
+    if request.user.is_authenticated:
+        try:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            rec_path = os.path.join(base_dir, "hybrid_recommendations.csv")
+
+            if os.path.exists(rec_path):
+                df = pd.read_csv(rec_path)
+                user_recs = df[df["user_key"] == request.user.username].head(5)
+
+                for _, rec in user_recs.iterrows():
+                    product = Product.objects.filter(
+                        name__iexact=str(rec["product_name"]).strip(),
+                        producer__display_name__iexact=str(rec["producer_name"]).strip(),
+                    ).select_related("producer").first()
+
+                    if product and product.is_visible_to_customers:
+                        recommended_products.append({
+                            "product": product,
+                            "final_score": rec.get("final_score", 0),
+                            "svd_score": rec.get("svd_score", 0),
+                            "rf_score": rec.get("rf_score", 0),
+                            "total_orders": rec.get("total_orders", 0),
+                        })
+
+        except Exception as e:
+            print("Recommendation load error:", e)
+
     return render(
         request,
         "products/product_list.html",
@@ -280,6 +311,7 @@ def product_list(request):
             "selected_organic": selected_organic,
             "query": q,
             "saved_items": saved_items,
+            "recommended_products": recommended_products,
         },
     )
 

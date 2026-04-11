@@ -29,7 +29,6 @@
 
                         <p class="text-muted small mb-3">By {{ rec.producer_name }}</p>
 
-                        <!-- Match Score Bar -->
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <small class="text-muted">Match Score</small>
@@ -43,7 +42,6 @@
                             </div>
                         </div>
 
-                        <!-- XAI Breakdown -->
                         <details class="mb-3">
                             <summary class="text-muted small" style="cursor:pointer;">
                                 💡 Why is this recommended?
@@ -73,10 +71,17 @@
                         {% endif %}
 
                         <div class="mt-auto">
-                            <a href="{% url 'products:product_list' %}"
-                               class="btn btn-dark btn-sm w-100">
-                                Order Now
-                            </a>
+                            {% if rec.product %}
+                                <a href="{% url 'products:product_detail' rec.product.id %}"
+                                   class="btn btn-dark btn-sm w-100">
+                                    Order Now
+                                </a>
+                            {% else %}
+                                <a href="{% url 'products:product_list' %}"
+                                   class="btn btn-outline-secondary btn-sm w-100">
+                                    View in Marketplace
+                                </a>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
