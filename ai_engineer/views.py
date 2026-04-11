@@ -2,6 +2,7 @@ import os
 import json
 import importlib.util
 
+import pandas as pd
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -14,6 +15,8 @@ from products.models import Product
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_OUTPUT_PATH = os.path.join(BASE_DIR, "hybrid_recommendations.csv")
 RECOMMENDER_PATH = os.path.join(BASE_DIR, "hybrid_recommender.py")
+SUMMARY_PATH = os.path.join(BASE_DIR, "hybrid_model_summary.json")
+BESTSELLER_PATH = os.path.join(BASE_DIR, "bestseller_recommendations.csv")
 
 
 def _load_recommender():
@@ -24,38 +27,23 @@ def _load_recommender():
     return module
 
 
-# ══════════════════════════════════════════════════════════════
-#  AI ENGINEER DASHBOARD
-# ══════════════════════════════════════════════════════════════
-
 @role_required("ai_engineer")
 def ai_engineer_dashboard(request):
-    """Main dashboard for AI engineers."""
     model_exists = os.path.exists(MODEL_OUTPUT_PATH)
-    summary_path = os.path.join(BASE_DIR, "hybrid_model_summary.json")
     summary = {}
 
-    if os.path.exists(summary_path):
-        with open(summary_path, encoding="utf-8") as f:
+    if os.path.exists(SUMMARY_PATH):
+        with open(SUMMARY_PATH, encoding="utf-8") as f:
             summary = json.load(f)
 
-    return render(
-        request,
-        "ai_engineer/dashboard.html",
-        {
-            "model_exists": model_exists,
-            "summary": summary,
-        },
-    )
+    return render(request, "ai_engineer/dashboard.html", {
+        "model_exists": model_exists,
+        "summary": summary,
+    })
 
-
-# ══════════════════════════════════════════════════════════════
-#  TRAIN / RETRAIN MODEL
-# ══════════════════════════════════════════════════════════════
 
 @role_required("ai_engineer")
 def train_model(request):
-    """Run hybrid_recommender.py training pipeline."""
     if request.method != "POST":
         return redirect("ai_engineer_dashboard")
 
@@ -75,29 +63,24 @@ def train_model(request):
             "top_n": recommender.TOP_N,
         }
 
-        with open(os.path.join(BASE_DIR, "hybrid_model_summary.json"), "w", encoding="utf-8") as f:
+        with open(SUMMARY_PATH, "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2, default=str)
 
         messages.success(
             request,
-            f"✅ Model trained successfully! {summary['users']} users, {summary['products']} products.",
+            f"✅ Model trained successfully! {summary['users']} users, {summary['products']} products."
         )
     except FileNotFoundError as e:
         messages.error(request, f"❌ Missing data file: {e}")
     except Exception as e:
-        messages.error(request, f"❌ Training failed: {e}")
+        messages.error(request, f"Training failed: {e}")
 
     return redirect("ai_engineer_dashboard")
 
 
-# ══════════════════════════════════════════════════════════════
-#  VIEW ALL RECOMMENDATIONS (AI ENGINEER)
-# ══════════════════════════════════════════════════════════════
-
 @role_required("ai_engineer")
 def view_recommendations(request):
-    """Show all generated recommendations in a table."""
-    import pandas as pd
+    recs = []
 
     if not os.path.exists(MODEL_OUTPUT_PATH):
         messages.warning(request, "No recommendations found. Please train the model first.")
@@ -106,25 +89,15 @@ def view_recommendations(request):
     df = pd.read_csv(MODEL_OUTPUT_PATH)
     recs = df.to_dict("records")
 
-    return render(
-        request,
-        "ai_engineer/recommendations_table.html",
-        {
-            "recommendations": recs,
-            "total": len(recs),
-        },
-    )
+    return render(request, "ai_engineer/recommendations_table.html", {
+        "recommendations": recs,
+        "total": len(recs),
+    })
 
-
-# ══════════════════════════════════════════════════════════════
-#  CUSTOMER-FACING RECOMMENDATIONS
-# ══════════════════════════════════════════════════════════════
 
 @login_required
 def customer_recommendations(request):
     """Show personalised recommendations for the logged-in customer."""
-    import pandas as pd
-
     username = request.user.username
     recs = []
     error = None
@@ -137,9 +110,8 @@ def customer_recommendations(request):
             user_recs = df[df["user_key"] == username]
 
             if user_recs.empty:
-                bestseller_path = os.path.join(BASE_DIR, "bestseller_recommendations.csv")
-                if os.path.exists(bestseller_path):
-                    fallback = pd.read_csv(bestseller_path).head(5)
+                if os.path.exists(BESTSELLER_PATH):
+                    fallback = pd.read_csv(BESTSELLER_PATH).head(5)
                     recs = fallback.to_dict("records")
                     for r in recs:
                         r["note"] = "Popular with all customers"
@@ -153,33 +125,21 @@ def customer_recommendations(request):
                     name__iexact=str(r.get("product_name", "")).strip(),
                     producer__display_name__iexact=str(r.get("producer_name", "")).strip(),
                 ).select_related("producer").first()
-
                 r["product"] = product
 
         except Exception as e:
             error = str(e)
 
-    return render(
-        request,
-        "ai_engineer/customer_recommendations.html",
-        {
-            "recommendations": recs,
-            "error": error,
-            "username": username,
-        },
-    )
+    return render(request, "ai_engineer/customer_recommendations.html", {
+        "recommendations": recs,
+        "error": error,
+        "username": username,
+    })
 
-
-# ══════════════════════════════════════════════════════════════
-#  JSON API ENDPOINT
-# ══════════════════════════════════════════════════════════════
 
 @login_required
 @require_GET
 def recommendations_api(request):
-    """GET /api/recommendations/ — returns JSON for logged-in user."""
-    import pandas as pd
-
     username = request.user.username
 
     if not os.path.exists(MODEL_OUTPUT_PATH):
@@ -190,18 +150,15 @@ def recommendations_api(request):
         user_recs = df[df["user_key"] == username]
 
         if user_recs.empty:
-            bestseller_path = os.path.join(BASE_DIR, "bestseller_recommendations.csv")
-            if os.path.exists(bestseller_path):
-                user_recs = pd.read_csv(bestseller_path).head(5)
+            if os.path.exists(BESTSELLER_PATH):
+                user_recs = pd.read_csv(BESTSELLER_PATH).head(5)
             else:
                 return JsonResponse({"status": "ok", "recommendations": []})
 
-        return JsonResponse(
-            {
-                "status": "ok",
-                "username": username,
-                "recommendations": user_recs.to_dict("records"),
-            }
-        )
+        return JsonResponse({
+            "status": "ok",
+            "username": username,
+            "recommendations": user_recs.to_dict("records"),
+        })
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
