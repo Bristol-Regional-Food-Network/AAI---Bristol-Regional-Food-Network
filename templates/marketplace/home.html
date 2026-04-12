@@ -11,39 +11,31 @@
     </p>
 
     {% if user.is_authenticated %}
-  <div class="d-flex flex-wrap gap-2">
+    <div class="d-flex flex-wrap gap-2">
 
-    <a class="btn btn-dark" href="{% url 'home' %}">Go to Home</a>
+      <a class="btn btn-dark" href="{% url 'home' %}">Go to Home</a>
 
-    {# Producer shortcut #}
-    {% if user.userprofile.can_access_producer %}
-      <a class="btn btn-warning" href="{% url 'producers:producer_dashboard' %}">
-        Producer Dashboard
-      </a>
-    {% endif %}
+      {% if user.userprofile.can_access_producer %}
+        <a class="btn btn-warning" href="{% url 'producers:producer_dashboard' %}">Producer Dashboard</a>
+      {% endif %}
 
-    {# Customer shortcut #}
-    {% if user.userprofile.can_access_customer %}
-      <a class="btn btn-primary" href="{% url 'products:product_list' %}">
-        Customer Dashboard
-      </a>
-    {% endif %}
+      {% if user.userprofile.can_access_customer %}
+        <a class="btn btn-primary" href="{% url 'products:product_list' %}">Customer Dashboard</a>
+      {% endif %}
 
-    {# Manager shortcut #}
-    {% if user.userprofile.is_manager %}
-      <a class="btn btn-success" href="{% url 'manager_dashboard' %}">
-        Manager Dashboard
-      </a>
-    {% endif %}
+      {% if user.userprofile.is_manager %}
+        <a class="btn btn-success" href="{% url 'manager_dashboard' %}">Manager Dashboard</a>
+      {% endif %}
 
-  </div>
+      {% if user.userprofile.role == "ai_engineer" %}
+        <a class="btn btn-warning text-dark" href="{% url 'ai_engineer_dashboard' %}">AI Engineer</a>
+      {% endif %}
+
+    </div>
     {% else %}
       <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-dark" href="{% url 'login' %}">Login</a>
         <a class="btn btn-warning" href="{% url 'register' %}">Register</a>
-
-        {# If you already created products pages, uncomment this #}
-        {# <a class="btn btn-outline-dark" href="{% url 'product_list' %}">Browse Products</a> #}
       </div>
     {% endif %}
   </div>
@@ -94,20 +86,14 @@
         Create an account to browse local products and place orders.
       </p>
       {% if user.is_authenticated %}
-      {% if user.userprofile.can_access_customer %}
-        <a class="btn btn-primary" href="{% url 'products:product_list' %}">
-          Go to Dashboard
-        </a>
+        {% if user.userprofile.can_access_customer %}
+          <a class="btn btn-primary" href="{% url 'products:product_list' %}">Go to Dashboard</a>
+        {% else %}
+          <span class="text-muted">Log in with a customer account to access the dashboard.</span>
+        {% endif %}
       {% else %}
-        <span class="text-muted">
-          Log in with a customer account to access the dashboard.
-        </span>
+        <a class="btn btn-outline-dark" href="{% url 'register' %}">Register as Customer</a>
       {% endif %}
-    {% else %}
-      <a class="btn btn-outline-dark" href="{% url 'register' %}">
-        Register as Customer
-      </a>
-    {% endif %}
     </div>
   </div>
 
@@ -117,7 +103,6 @@
       <p class="text-muted mb-3">
         Register as a producer to add products and manage your listings.
       </p>
-
       {% if user.is_authenticated %}
         {% if user.userprofile.can_access_producer %}
           <a class="btn btn-warning" href="{% url 'producers:producer_dashboard' %}">Go to Dashboard</a>

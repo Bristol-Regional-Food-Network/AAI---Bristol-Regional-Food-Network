@@ -60,22 +60,60 @@
         <div class="card-header bg-dark text-white">
             Personalised Hybrid Recommendations
         </div>
-        <div class="card-body p-0">
+        <div class="card-body">
+
+            <!-- Search & Sort Controls -->
+            <div class="row g-2 mb-3">
+                <div class="col-md-5">
+                    <input
+                        type="text"
+                        id="recSearch"
+                        class="form-control"
+                        placeholder="Search by user, product, category or producer…"
+                    >
+                </div>
+                <div class="col-md-3">
+                    <select id="recSortCol" class="form-select">
+                        <option value="">Sort by column…</option>
+                        <option value="0">User</option>
+                        <option value="1">Product</option>
+                        <option value="2">Category</option>
+                        <option value="3">Producer</option>
+                        <option value="4">Orders</option>
+                        <option value="5">SVD Score</option>
+                        <option value="6">RF Score</option>
+                        <option value="7">Final Score</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select id="recSortDir" class="form-select">
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <button id="applyBtn" class="btn btn-dark w-100">Apply</button>
+                </div>
+                <div class="col-md-1">
+                    <button id="resetBtn" class="btn btn-outline-secondary w-100">Reset</button>
+                </div>
+            </div>
+
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0" id="recTable">
                     <thead class="table-light">
                         <tr>
-                            <th>User</th>
-                            <th>Product</th>
-                            <th>Category</th>
-                            <th>Producer</th>
-                            <th>Orders</th>
-                            <th>SVD Score</th>
-                            <th>RF Score</th>
-                            <th>Final Score</th>
+                            <th class="sortable" data-col="0" style="cursor:pointer;">User <span class="sort-icon text-muted">⇅</span></th>
+                            <th class="sortable" data-col="1" style="cursor:pointer;">Product <span class="sort-icon text-muted">⇅</span></th>
+                            <th class="sortable" data-col="2" style="cursor:pointer;">Category <span class="sort-icon text-muted">⇅</span></th>
+                            <th class="sortable" data-col="3" style="cursor:pointer;">Producer <span class="sort-icon text-muted">⇅</span></th>
+                            <th class="sortable" data-col="4" style="cursor:pointer;">Orders <span class="sort-icon text-muted">⇅</span></th>
+                            <th class="sortable" data-col="5" style="cursor:pointer;">SVD Score <span class="sort-icon text-muted">⇅</span></th>
+                            <th class="sortable" data-col="6" style="cursor:pointer;">RF Score <span class="sort-icon text-muted">⇅</span></th>
+                            <th class="sortable" data-col="7" style="cursor:pointer;">Final Score <span class="sort-icon text-muted">⇅</span></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="recBody">
                         {% for rec in recommendations %}
                         <tr>
                             <td><code>{{ rec.user_key }}</code></td>
@@ -88,7 +126,7 @@
                             <td><strong>{{ rec.final_score|floatformat:3 }}</strong></td>
                         </tr>
                         {% empty %}
-                        <tr>
+                        <tr id="emptyRow">
                             <td colspan="8" class="text-center text-muted py-4">
                                 No personalised recommendations yet. Train the model first.
                             </td>
@@ -96,9 +134,99 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                <p id="noResults" class="text-center text-muted py-3" style="display:none;">No results match your search.</p>
             </div>
+
         </div>
     </div>
 
 </div>
+
+<script>
+    const searchInput = document.getElementById('recSearch');
+    const sortColSel  = document.getElementById('recSortCol');
+    const sortDirSel  = document.getElementById('recSortDir');
+    const tbody       = document.getElementById('recBody');
+    const noResults   = document.getElementById('noResults');
+
+    let allRows = Array.from(tbody.querySelectorAll('tr:not(#emptyRow)'));
+
+    function getCellValue(row, colIndex) {
+        const cell = row.cells[colIndex];
+        return cell ? cell.innerText.trim() : '';
+    }
+
+    function applyFilterAndSort() {
+        const query   = searchInput.value.toLowerCase();
+        const colIdx  = sortColSel.value;
+        const sortDir = sortDirSel.value;
+
+        // 1. Filter
+        let visible = allRows.filter(row => {
+            const rowText = Array.from(row.cells).map(c => c.innerText).join(' ').toLowerCase();
+            return rowText.includes(query);
+        });
+
+        // 2. Sort
+        if (colIdx !== '') {
+            const idx = parseInt(colIdx);
+            const numeric = [4, 5, 6, 7].includes(idx);
+            visible.sort((a, b) => {
+                const aVal = getCellValue(a, idx);
+                const bVal = getCellValue(b, idx);
+                const cmp  = numeric
+                    ? parseFloat(aVal) - parseFloat(bVal)
+                    : aVal.localeCompare(bVal);
+                return sortDir === 'desc' ? -cmp : cmp;
+            });
+        }
+
+        // 3. Render
+        allRows.forEach(r => tbody.removeChild(r));
+        visible.forEach(r => tbody.appendChild(r));
+
+        // Update sort icons
+        document.querySelectorAll('.sortable .sort-icon').forEach(icon => icon.textContent = '⇅');
+        if (colIdx !== '') {
+            const activeHeader = document.querySelector(`.sortable[data-col="${colIdx}"] .sort-icon`);
+            if (activeHeader) activeHeader.textContent = sortDir === 'asc' ? '↑' : '↓';
+        }
+
+        noResults.style.display = visible.length === 0 ? 'block' : 'none';
+    }
+
+    // Click header to sort
+    document.querySelectorAll('.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.col;
+            if (sortColSel.value === col) {
+                sortDirSel.value = sortDirSel.value === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColSel.value = col;
+                sortDirSel.value = 'asc';
+            }
+            applyFilterAndSort();
+        });
+    });
+
+    // Apply button triggers filter + sort
+    document.getElementById('applyBtn').addEventListener('click', applyFilterAndSort);
+
+    // Also allow pressing Enter in the search box
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') applyFilterAndSort();
+    });
+
+    // Reset button clears everything and restores all rows
+    document.getElementById('resetBtn').addEventListener('click', () => {
+        searchInput.value = '';
+        sortColSel.value = '';
+        sortDirSel.value = 'asc';
+        allRows.forEach(r => tbody.removeChild(r));
+        allRows.forEach(r => tbody.appendChild(r));
+        document.querySelectorAll('.sortable .sort-icon').forEach(icon => icon.textContent = '⇅');
+        noResults.style.display = 'none';
+    });
+</script>
+
 {% endblock %}

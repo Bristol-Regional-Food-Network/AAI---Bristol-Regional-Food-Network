@@ -79,10 +79,10 @@ def load_orders() -> pd.DataFrame:
     if missing:
         raise ValueError(f"orders_dataset.csv is missing columns: {missing}")
 
-    if "user_id" in df.columns:
-        user_col = "user_id"
-    elif "username" in df.columns:
+    if "username" in df.columns:
         user_col = "username"
+    elif "user_id" in df.columns:
+        user_col = "user_id"
     else:
         raise ValueError("orders_dataset.csv must contain either 'user_id' or 'username'.")
 
