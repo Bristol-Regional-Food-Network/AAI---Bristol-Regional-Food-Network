@@ -18,7 +18,7 @@ AAI---Bristol-Regional-Food-Network/
 │
 ├── src/                  # Python code
 ├── data/                 # Dataset (gitignored)
-├── models/               # Trained models (gitignored)
+├── models/               # Trained models
 ├── requirements.txt      # Python dependencies
 ├── .gitignore
 ├── README.md
@@ -147,3 +147,45 @@ Training and validation accuracy were plotted across epochs to provide a visual 
 To improve baseline performance, transfer learning was applied using MobileNetV2 pre-trained on ImageNet. The original classification head was removed and replaced with task-specific dense layers for binary classification. The pre-trained convolutional base was frozen during initial training so that previously learned visual features could be reused while only the new classification layers were trained on the produce dataset.
 
 ---
+
+## Grading Fruit
+
+As the dataset did not provide labelled measurements for colour, size, or ripeness, these attributes were approximated using derived image-based features. Colour quality was estimated from saturation and brightness, size was estimated from visible object area, and ripeness was approximated using the output confidence of the freshness classifier.
+
+The system combines machine learning and rule-based logic to form a hybrid decision-making pipeline. A deep learning model is first used to classify produce as fresh or rotten. Fresh items are then evaluated using image-derived features, including colour, size, and ripeness, which are combined using rule-based thresholds to produce an interpretable quality grade and actionable recommendation.
+
+### Calculating Colour Score
+
+he colour quality of produce was estimated using the HSV colour space. Saturation and brightness were used as key indicators of visual quality, as fresh produce typically exhibits strong, vivid colours and sufficient brightness, whereas lower-quality or deteriorating produce tends to appear dull or dark. A weighted combination of saturation (60%) and brightness (40%) was used to compute a colour score, which was then normalised to a percentage scale (0–100). This approach provides a simple but effective proxy for visual freshness.
+
+### Calculating Size Score
+
+The initial size-scoring method used only the largest detected contour, which caused close-up images of single fruits to receive very high scores while images containing multiple smaller items often received disproportionately low scores. To address this, the method was revised to use the total contour area across all detected produce regions. This produced a more balanced estimate of visible produce area within the image and improved robustness for images containing multiple items.
+
+Size was approximated using contour-based segmentation. After converting the image to grayscale and applying thresholding, contours corresponding to visible produce regions were detected. Rather than relying only on the largest contour, the total area of all detected contours was used to estimate the apparent size of the produce within the image. This value was normalised relative to the full image area to obtain a score between 0 and 100
+
+### Calculating Ripeness
+
+The ripeness score was derived from the output of the trained classification model. The model produces a probability indicating how likely the produce is to be fresh. This probability was scaled to a percentage to represent a ripeness score. This approach leverages the model’s learned visual features, such as texture, discolouration, and surface irregularities, making it a strong proxy for overall freshness and condition.
+
+### Assigning a Grade
+
+The final quality grade was determined using a rule-based system based on predefined thresholds for colour, size, and ripeness.
+Grade A represents high-quality produce meeting all upper thresholds, Grade B represents acceptable but lower-quality produce, and Grade C represents produce that may require urgent action. This rule-based approach ensures transparency and interpretability in the decision-making process.
+
+### Recommendation System
+
+Based on the assigned grade, the system generates actionable recommendations for producers. Rotten produce is automatically flagged for removal, while fresh produce is assigned actions based on quality grade.
+This supports efficient inventory management and reduces manual decision-making.
+
+### Testing Grading
+
+Initial colour scoring produced consistently low values because whole-image averages were heavily influenced by shadows and background pixels. To improve robustness, the scoring function was adjusted to use a more suitable scaling range and, where appropriate, to ignore very dark pixels likely to belong to the background. This produced more meaningful colour scores across the dataset while preserving relative variation between images.
+
+---
+
+## Prediction and Grading Pipeline
+
+The full prediction pipeline was implemented to combine the freshness classifier and the rule-based grading system into a single workflow. When an image is provided, the trained model first predicts whether the produce is fresh or rotten. Rotten items are immediately flagged for removal. Fresh items are then passed to a second stage where colour, size, and ripeness scores are computed and used to assign an overall grade and inventory recommendation.
+
+End-to-end testing showed that the pipeline could successfully differentiate between rotten items, high-quality fresh items, and lower-scoring fresh items. However, the colour feature remained sensitive to lighting conditions and image composition, causing some fresh items with darker or less vivid appearance to receive lower grades. This limitation reflects the challenge of using image-derived proxy features in unconstrained real-world conditions.
