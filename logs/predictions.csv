@@ -1,0 +1,2 @@
+timestamp,image_path,predicted_label,fresh_probability,rotten_probability,grade,action
+2026-04-15 18:15:09,dataset/fresh/fef5206a-b9ac-4724-9a18-16502b73d392.png,fresh,0.9973,0.0027,A,Sell at full price

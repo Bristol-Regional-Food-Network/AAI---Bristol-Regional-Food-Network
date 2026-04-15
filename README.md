@@ -76,6 +76,38 @@ pip install -r requirements.txt
 Download from the OneDrive link and place it inside the `data/` folder.
 
 ---
+## Running the Full Pipeline
+
+### Step 1: Prepare dataset
+```bash
+python src/dataset_cleaner.py
+```
+This restructures the dataset into:
+- fresh
+- rotten
+
+### Step 2: Train the model
+```bash
+python src/train_model.py
+```
+This will:
+- Train the MobileNetV2 Model
+- Save it to models/
+- Generate training graoh
+
+### Step 3: Evaluate the model
+```bash
+python src/evaluate_model.py
+```
+This will compute accuracy, precision, recall, and F1-score, generate a confusion matrix and save results in the results/ folder
+
+### Step 4: Run prediction and grading
+```bash
+python src/predict_and_grade.py [image_path]
+```
+This will generate the predictions and the grade for the image and will save it and then output it
+
+---
 
 ## Dataset Preprocessing and Structuring
 
@@ -96,7 +128,17 @@ Importantly, all images were retained during preprocessing, including those with
 ## Rotten vs Healthy Model
 
 ### Overview for Report
-The train_model.py script implements the first stage of the proposed quality assessment pipeline. Its purpose is to train a convolutional neural network to classify produce images as either fresh or rotten. This stage functions as an initial filtering mechanism: items predicted as rotten can be removed from inventory immediately, while items predicted as fresh can be passed to later stages for more detailed quality grading. The script includes dataset loading and preprocessing, CNN construction, training, validation-based evaluation, model persistence, and visualisation of training performance.
+The train_model.py script implements the first stage of the quality assessment pipeline. The final model uses transfer learning with MobileNetV2 to classify produce as fresh or rotten.
+
+MobileNetV2 was selected because:
+- it is pre-trained on ImageNet
+- it extracts strong visual features
+- it performs well on smaller datasets
+- it reduces training time compared to training from scratch
+
+The convolutional base was frozen, and only the classification layers were trained on the produce dataset.
+
+This stage functions as an initial filtering mechanism: items predicted as rotten are removed from inventory, while fresh items proceed to the grading stage.
 
 ### Explaination for Demo
 This script trains our baseline computer vision model. We first classify produce as fresh or rotten. Rotten produce can be removed immediately, while fresh produce continues to the later grading stage where we assess quality in more detail using attributes like colour, size, and ripeness.
@@ -148,6 +190,28 @@ To improve baseline performance, transfer learning was applied using MobileNetV2
 
 ---
 
+## Model Evaluation
+
+The model was evaluated using a validation/test dataset to assess performance on unseen data.
+
+The following metrics were used:
+- Accuracy
+- Precision
+- Recall
+- F1-score
+- Confusion Matrix
+
+These metrics provide a more complete evaluation than accuracy alone, particularly in understanding misclassifications.
+
+All evaluation outputs are saved in the `results/` folder, including:
+- classification report
+- confusion matrix
+- metric summary
+
+This evaluation demonstrates the effectiveness of the model and highlights areas for improvement.
+
+---
+
 ## Grading Fruit
 
 As the dataset did not provide labelled measurements for colour, size, or ripeness, these attributes were approximated using derived image-based features. Colour quality was estimated from saturation and brightness, size was estimated from visible object area, and ripeness was approximated using the output confidence of the freshness classifier.
@@ -190,6 +254,75 @@ The full prediction pipeline was implemented to combine the freshness classifier
 
 End-to-end testing showed that the pipeline could successfully differentiate between rotten items, high-quality fresh items, and lower-scoring fresh items. However, the colour feature remained sensitive to lighting conditions and image composition, causing some fresh items with darker or less vivid appearance to receive lower grades. This limitation reflects the challenge of using image-derived proxy features in unconstrained real-world conditions.
 
+---
+
+## Prediction Logging and Monitoring
+
+To support monitoring and future model improvement, a logging mechanism was implemented to record all prediction results.
+
+Each time the prediction pipeline is executed, the system logs key information including:
+
+- timestamp
+- image path
+- predicted label (fresh or rotten)
+- prediction probabilities
+- assigned grade
+- recommended action
+
+This information is stored in a CSV file located at: `logs/predictions.csv`
+
+
+### Purpose of Logging
+
+This logging functionality supports several key aspects of the system:
+
+- **Model Monitoring:** Allows tracking of prediction trends over time
+- **Error Analysis:** Helps identify incorrect predictions and edge cases
+- **Future Retraining:** Logged data can be used to refine and improve the model
+- **System Transparency:** Provides visibility into how the system is being used
+
+This aligns with the case study requirement that AI engineers should be able to access interaction data to improve model performance, and that administrators should have visibility of system activity.
+
+---
+
 ### Explainability
 
 To support transparency and trust, an explainability layer was added to the system. Because the final quality grade is determined using explicit thresholds for colour, size, and ripeness, the system can provide direct textual explanations showing which features satisfied or failed the relevant thresholds. In addition, rotten classifications are explained using the output probabilities of the freshness model. This approach provides interpretable, user-facing justifications for automated decisions without requiring specialist knowledge of deep learning internals.
+
+---
+
+## Limitations
+
+Several limitations were identified:
+
+- Colour scoring is sensitive to lighting and background conditions
+- Size estimation depends on contour detection, which can be inaccurate in complex images
+- Ripeness is estimated using model confidence rather than true labels
+- Dataset is limited to fresh vs rotten classification only
+- Model performance may degrade on unseen environments
+
+These limitations highlight areas for future improvement, such as:
+- improved segmentation techniques
+- better labelled datasets
+- more advanced feature extraction
+
+---
+
+## Integration with DESD System
+
+The AI model is designed to integrate into the digital marketplace platform developed in DESD.
+
+The prediction pipeline:
+- accepts an image input
+- returns classification, quality scores, grade, and recommendation
+
+This enables:
+- automated quality inspection during product upload
+- real-time inventory decisions
+- transparent decision-making through explainable outputs
+
+In the full system:
+- producers upload product images
+- the AI evaluates quality
+- results are displayed in the system
+- actions are applied to inventory
