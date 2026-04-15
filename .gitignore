@@ -5,6 +5,4 @@ env/
 
 # Ignore data
 data/
-
-# Ignore trained models
-models/
+dataset/
