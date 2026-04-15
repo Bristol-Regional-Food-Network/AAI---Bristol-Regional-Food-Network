@@ -16,7 +16,9 @@ from grading import (
     calculate_size_score,
     calculate_ripeness_score,
     assign_grade,
-    recommend_action
+    recommend_action,
+    explain_grade,
+    explain_rotten_decision
 )
 
 
@@ -50,19 +52,24 @@ def grade_fresh_item(image_path, fresh_probability):
 
     img = load_image(image_path)
 
-    color_score = calculate_colour_score(img)
+    colour_score = calculate_colour_score(img)
     size_score = calculate_size_score(img)
     ripeness_score = calculate_ripeness_score(fresh_probability)
 
-    grade = assign_grade(color_score, size_score, ripeness_score)
+    grade = assign_grade(colour_score, size_score, ripeness_score)
     action = recommend_action("fresh", grade)
 
+    explanation = explain_grade(
+        colour_score, size_score, ripeness_score, grade
+    )
+
     return {
-        "color_score": color_score,
+        "colour_score": colour_score,
         "size_score": size_score,
         "ripeness_score": ripeness_score,
         "grade": grade,
-        "action": action
+        "action": action,
+        "explanation": explanation
     }
 
 
@@ -90,20 +97,31 @@ def run_pipeline(image_path):
 
     if predicted_label == "rotten":
         action = recommend_action("rotten")
+        explanation = explain_rotten_decision(fresh_prob, rotten_prob)
+
         print("\n=== Inventory Decision ===")
         print(f"Action: {action}")
+
+        print("\n=== Explanation ===")
+        for line in explanation:
+            print(f"- {line}")
+
         return
 
     results = grade_fresh_item(image_path, fresh_prob)
 
     print("\n=== Quality Scores ===")
-    print(f"Color Score: {results['color_score']}")
+    print(f"Colour Score: {results['colour_score']}")
     print(f"Size Score: {results['size_score']}")
     print(f"Ripeness Score: {results['ripeness_score']}")
 
     print("\n=== Final Assessment ===")
     print(f"Grade: {results['grade']}")
     print(f"Action: {results['action']}")
+
+    print("\n=== Explanation ===")
+    for line in results["explanation"]:
+        print(f"- {line}")
 
 
 def main():
