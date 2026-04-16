@@ -6,3 +6,4 @@ scikit-learn
 pillow
 jupyter
 opencv-python
+flask
