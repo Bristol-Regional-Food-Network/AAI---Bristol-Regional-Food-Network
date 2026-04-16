@@ -207,6 +207,10 @@ The model was compiled using:
 The baseline CNN was trained using the training subset of the dataset, while performance on the validation subset was monitored after each epoch.
 Training was initially performed for five epochs to establish a working baseline and to observe whether the model could learn meaningful distinctions between fresh and rotten produce without tuning.
 
+### Using Transfer Learning
+
+To improve baseline performance, transfer learning was applied using MobileNetV2 pre-trained on ImageNet. The original classification head was removed and replaced with task-specific dense layers for binary classification. The pre-trained convolutional base was frozen during initial training so that previously learned visual features could be reused while only the new classification layers were trained on the produce dataset.
+
 ### Evaluating the model
 
 After training, the model was evaluated on the validation set to assess its ability to generalise to unseen images. Validation accuracy was used as an initial performance indicator because it provides a clearer measure of practical usefulness than training accuracy alone.
@@ -219,9 +223,6 @@ The trained model was saved to file so that it could be reused without retrainin
 
 Training and validation accuracy were plotted across epochs to provide a visual representation of the model’s learning behaviour. This made it possible to identify whether performance improved consistently and whether there were early signs of overfitting.
 
-### Using Transfer Learning
-
-To improve baseline performance, transfer learning was applied using MobileNetV2 pre-trained on ImageNet. The original classification head was removed and replaced with task-specific dense layers for binary classification. The pre-trained convolutional base was frozen during initial training so that previously learned visual features could be reused while only the new classification layers were trained on the produce dataset.
 
 ---
 
@@ -255,13 +256,13 @@ The system combines machine learning and rule-based logic to form a hybrid decis
 
 ### Calculating Colour Score
 
-he colour quality of produce was estimated using the HSV colour space. Saturation and brightness were used as key indicators of visual quality, as fresh produce typically exhibits strong, vivid colours and sufficient brightness, whereas lower-quality or deteriorating produce tends to appear dull or dark. A weighted combination of saturation (60%) and brightness (40%) was used to compute a colour score, which was then normalised to a percentage scale (0–100). This approach provides a simple but effective proxy for visual freshness.
+The colour quality of produce was estimated using the HSV colour space. Saturation and brightness were used as key indicators of visual quality, as fresh produce typically exhibits strong, vivid colours and sufficient brightness, whereas lower-quality or deteriorating produce tends to appear dull or dark. A weighted combination of saturation (60%) and brightness (40%) was used to compute a colour score, which was then normalised to a percentage scale (0–100). This approach provides a simple but effective proxy for visual freshness.
 
 ### Calculating Size Score
 
 The initial size-scoring method used only the largest detected contour, which caused close-up images of single fruits to receive very high scores while images containing multiple smaller items often received disproportionately low scores. To address this, the method was revised to use the total contour area across all detected produce regions. This produced a more balanced estimate of visible produce area within the image and improved robustness for images containing multiple items.
 
-Size was approximated using contour-based segmentation. After converting the image to grayscale and applying thresholding, contours corresponding to visible produce regions were detected. Rather than relying only on the largest contour, the total area of all detected contours was used to estimate the apparent size of the produce within the image. This value was normalised relative to the full image area to obtain a score between 0 and 100
+Size was approximated using contour-based segmentation. After converting the image to grayscale and applying thresholding, contours corresponding to visible produce regions were detected. Rather than relying only on the largest contour, the total area of all detected contours was used to estimate the apparent size of the produce within the image. This value was normalised relative to the full image area to obtain a score between 0 and 100.
 
 ### Calculating Ripeness
 
