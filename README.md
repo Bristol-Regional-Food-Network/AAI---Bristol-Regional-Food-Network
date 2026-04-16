@@ -79,6 +79,45 @@ pip install -r requirements.txt
 Download from the OneDrive link and place it inside the `data/` folder.
 
 ---
+
+## Flask AI Inference Service
+
+To support integration with the DESD system, the AI model can be run as a lightweight Flask-based inference service.
+
+This service:
+- receives an uploaded fruit or vegetable image
+- runs the trained prediction and grading pipeline
+- returns a JSON response containing:
+  - predicted label
+  - freshness probabilities
+  - colour, size, and ripeness scores
+  - final grade
+  - recommended action
+  - explanation text
+
+This allows the AI component to be deployed separately from the DESD web application while still being integrated into the wider system.
+
+## Running the Flask Service
+
+Before running the AI service, make sure the Python virtual environment is activated and all dependencies are installed.
+
+### Start the Flask AI service
+
+```bash
+python ai_service.py
+```
+The service will start on: `http://127.0.0.1:5001`
+This service must be running before DESD attempts to send images for AI inspection.
+
+### Make sure to update the DESD Build
+```bash
+docker compose down
+docker compose build --no-cache
+docker compose up
+```
+
+---
+
 ## Running the Full Pipeline
 
 ### Step 1: Prepare dataset
@@ -344,21 +383,32 @@ These limitations highlight areas for future improvement, such as:
 
 ---
 
-## Integration with DESD System
+## API Endpoint
 
-The AI model is designed to integrate into the digital marketplace platform developed in DESD.
+The Flask service exposes the following endpoint:
 
-The prediction pipeline:
-- accepts an image input
-- returns classification, quality scores, grade, and recommendation
+### POST `/predict`
 
-This enables:
-- automated quality inspection during product upload
-- real-time inventory decisions
-- transparent decision-making through explainable outputs
+This endpoint accepts an image file upload and returns the AI assessment result as JSON.
 
-In the full system:
-- producers upload product images
-- the AI evaluates quality
-- results are displayed in the system
-- actions are applied to inventory
+### Example JSON response
+
+```json
+{
+  "image_path": "temp_example.png",
+  "predicted_label": "fresh",
+  "fresh_probability": 0.9973,
+  "rotten_probability": 0.0027,
+  "colour_score": 82.89,
+  "size_score": 100.0,
+  "ripeness_score": 99.73,
+  "grade": "A",
+  "action": "Sell at full price",
+  "explanation": [
+    "Grade A was assigned because all quality thresholds were met.",
+    "Colour score 82.89 meets the A threshold (>= 80).",
+    "Size score 100.0 meets the A threshold (>= 80).",
+    "Ripeness score 99.73 meets the A threshold (>= 80)."
+  ]
+}
+```
