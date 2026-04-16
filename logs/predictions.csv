@@ -1,2 +1,3 @@
 timestamp,image_path,predicted_label,fresh_probability,rotten_probability,grade,action
 2026-04-15 18:15:09,dataset/fresh/fef5206a-b9ac-4724-9a18-16502b73d392.png,fresh,0.9973,0.0027,A,Sell at full price
+2026-04-16 17:26:50,dataset/fresh/0a0a25fe-d5c8-4894-850a-0b9fcf5090bc.png,fresh,0.5612,0.4388,C,Apply discount or manual review

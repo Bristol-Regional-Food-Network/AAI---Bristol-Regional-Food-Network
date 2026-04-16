@@ -1,3 +1,6 @@
+# Philip Thompson 22024226
+
+# These lines suppress TensorFlow warnings and logs for cleaner output during training.
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import warnings

@@ -1,3 +1,5 @@
+# Philip Thompson 22024226
+
 import cv2
 import numpy as np
 

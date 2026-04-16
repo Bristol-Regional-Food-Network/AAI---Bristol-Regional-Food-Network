@@ -17,8 +17,11 @@ The system is designed as a multi-stage pipeline:
 AAI---Bristol-Regional-Food-Network/
 │
 ├── src/                  # Python code
-├── data/                 # Dataset (gitignored)
+├── data/                 # Raw dataset (gitignored)
+├── dataset/              # Processed dataset
 ├── models/               # Trained models
+├── results/              # Evaluation outputs
+├── logs/                 # Prediction logs
 ├── requirements.txt      # Python dependencies
 ├── .gitignore
 ├── README.md
@@ -107,6 +110,30 @@ python src/predict_and_grade.py [image_path]
 ```
 This will generate the predictions and the grade for the image and will save it and then output it
 
+### Example Output
+```bash
+python src/predict_and_grade.py dataset/fresh/0a0a25fe-d5c8-4894-850a-0b9fcf5090bc.png
+```
+```markdown
+=== Prediction Result ===
+Image: dataset/fresh/0a0a25fe-d5c8-4894-850a-0b9fcf5090bc.png
+Predicted Label: fresh
+Fresh Probability: 0.5612
+Rotten Probability: 0.4388
+
+=== Quality Scores ===
+Colour Score: 80.1
+Size Score: 100.0
+Ripeness Score: 56.12
+
+=== Final Assessment ===
+Grade: C
+Action: Apply discount or manual review
+
+=== Explanation ===
+- Grade C was assigned because one or more features fell below the minimum Grade B thresholds.
+- Ripeness score 56.12 is below the Grade B threshold (65).
+```
 ---
 
 ## Dataset Preprocessing and Structuring
@@ -141,16 +168,16 @@ The convolutional base was frozen, and only the classification layers were train
 This stage functions as an initial filtering mechanism: items predicted as rotten are removed from inventory, while fresh items proceed to the grading stage.
 
 ### Explaination for Demo
-This script trains our baseline computer vision model. We first classify produce as fresh or rotten. Rotten produce can be removed immediately, while fresh produce continues to the later grading stage where we assess quality in more detail using attributes like colour, size, and ripeness.
+This script trains our computer vision model using transfer learning. We first classify produce as fresh or rotten using MobileNetV2. Rotten produce can be removed immediately, while fresh produce continues to the later grading stage where we assess quality in more detail using attributes like colour, size, and ripeness.
 
 
 ### Training Pipeline
 - load the image dataset
-- prepare the data for learning
-- build a CNN model
-- train the model on fresh vs rotten images
-- evaluate how well it performs
-- save the trained model and graph for later use
+- preprocess and normalise images
+- use MobileNetV2 as a feature extractor
+- train classification layers for fresh vs rotten prediction
+- evaluate model performance
+- save trained model and training graph
 
 The model training pipeline was implemented in Python using TensorFlow and Keras. TensorFlow was used to define and train the convolutional neural network, while Matplotlib was used to visualise training performance.
 
@@ -160,12 +187,20 @@ The dataset was loaded using Keras’ ImageDataGenerator, which enabled automate
 
 The folder-based dataset structure allowed class labels to be assigned automatically, with fresh produce mapped to one class and rotten produce mapped to the other.
 
-### Building the model
+### Building the Model
 
-A CNN was implemented as the baseline image classification model. CNNs are well suited to image analysis because they automatically learn hierarchical visual features. The architecture consisted of three convolutional blocks with 32, 64, and 128 filters respectively, each followed by max-pooling to reduce spatial dimensions and improve computational efficiency.
+The model was built using MobileNetV2 with transfer learning.
+The pre-trained convolutional base was used to extract visual features such as texture, colour, and surface patterns. This base was frozen during initial training.
 
-After feature extraction, the output was flattened and passed through a dense layer of 128 neurons before reaching a final sigmoid output neuron for binary classification.
-The model was compiled using the Adam optimiser, binary cross-entropy loss, and accuracy as the primary training metric.
+Custom classification layers were added on top, including:
+- a global average pooling layer
+- a dense layer
+- a sigmoid output layer for binary classification
+
+The model was compiled using:
+- Adam optimiser
+- binary cross-entropy loss
+- accuracy as the primary metric
 
 ### Training the model
 
@@ -192,7 +227,7 @@ To improve baseline performance, transfer learning was applied using MobileNetV2
 
 ## Model Evaluation
 
-The model was evaluated using a validation/test dataset to assess performance on unseen data.
+The model was evaluated using the validation subset of the dataset to assess performance on unseen data.
 
 The following metrics were used:
 - Accuracy

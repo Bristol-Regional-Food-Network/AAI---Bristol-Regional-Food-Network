@@ -1,3 +1,5 @@
+# Philip Thompson 22024226
+
 import os
 import csv
 from datetime import datetime
