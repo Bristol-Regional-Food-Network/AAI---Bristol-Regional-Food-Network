@@ -9,7 +9,7 @@ AAI/
 │
 ├── task1/
 ├── task2/
-├── testing/   (to be added)
+├── testing/
 │
 ├── README.md
 ├── requirements.txt
