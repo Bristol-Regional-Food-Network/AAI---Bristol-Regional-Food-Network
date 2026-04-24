@@ -4,7 +4,7 @@
 This repository contains the implementation of our Advanced Artificial Intelligence (AAI) group project. The project is organised into separate tasks, each focusing on different components of the system, including model development, evaluation, and deployment.
 
 ## Repository Structure  
-
+```
 AAI/
 │
 ├── task1/
@@ -14,7 +14,7 @@ AAI/
 ├── README.md
 ├── requirements.txt
 ├── ai_service.py
-
+```
 
 ### Task 1  
 The `task1/` folder contains the initial machine learning implementation, including data handling, feature encoding, and model training (e.g., Random Forest).  
